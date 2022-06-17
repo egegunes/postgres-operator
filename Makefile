@@ -2,7 +2,7 @@
 # Default values if not already set
 PGOROOT ?= $(CURDIR)
 PGO_BASEOS ?= ubi8
-PGO_IMAGE_PREFIX ?= crunchydata
+PGO_IMAGE_PREFIX ?= egegunes
 PGO_IMAGE_TAG ?= $(PGO_BASEOS)-$(PGO_VERSION)
 PGO_VERSION ?= $(shell git describe --tags)
 PGO_PG_VERSION ?= 14
@@ -13,7 +13,7 @@ RELTMPDIR=/tmp/release.$(PGO_VERSION)
 RELFILE=/tmp/postgres-operator.$(PGO_VERSION).tar.gz
 
 # Valid values: buildah (default), docker
-IMGBUILDER ?= buildah
+IMGBUILDER ?= docker
 # Determines whether or not rootless builds are enabled
 IMG_ROOTLESS_BUILD ?= false
 # The utility to use when pushing/pulling to and from an image repo (e.g. docker or buildah)
@@ -60,8 +60,7 @@ ifeq ("$(DEBUG_BUILD)", "true")
 endif
 
 # To build a specific image, run 'make <name>-image' (e.g. 'make postgres-operator-image')
-images = postgres-operator \
-	crunchy-postgres-exporter
+images = postgres-operator
 
 .PHONY: all setup clean push pull release deploy
 
