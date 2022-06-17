@@ -22,6 +22,7 @@ import (
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/crunchydata/postgres-operator/internal/config"
@@ -242,9 +243,15 @@ func addPGMonitorToInstancePodSpec(
 	cluster *v1beta1.PostgresCluster,
 	template *corev1.PodTemplateSpec) error {
 
-	err := addPGMonitorExporterToInstancePodSpec(cluster, template)
+	if err := addPGMonitorExporterToInstancePodSpec(cluster, template); err != nil {
+		return err
+	}
 
-	return err
+	if err := addPMMToInstancePodSpec(cluster, template); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // addPGMonitorExporterToInstancePodSpec performs the necessary setup to
@@ -324,6 +331,208 @@ func addPGMonitorExporterToInstancePodSpec(
 	// add the proper label to support Pod discovery by Prometheus per pgMonitor configuration
 	initialize.Labels(template)
 	template.Labels[naming.LabelPGMonitorDiscovery] = "true"
+
+	return nil
+}
+
+// addPMMToInstancePodSpec performs the necessary setup to add PMM container to a PodTemplateSpec
+func addPMMToInstancePodSpec(
+	cluster *v1beta1.PostgresCluster,
+	template *corev1.PodTemplateSpec) error {
+
+	if !pgmonitor.PMMEnabled(cluster) {
+		return nil
+	}
+
+	securityContext := initialize.RestrictedSecurityContext()
+	pmmContainer := corev1.Container{
+		Name:            naming.ContainerPMM,
+		Image:           config.PMMContainerImage(cluster),
+		ImagePullPolicy: cluster.Spec.ImagePullPolicy,
+		Resources:       cluster.Spec.Monitoring.PMM.Resources,
+		LivenessProbe: &corev1.Probe{
+			Handler: corev1.Handler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path:   "/local/Status",
+					Port:   intstr.FromInt(7777),
+					Scheme: corev1.URISchemeHTTP,
+				},
+			},
+			FailureThreshold:    3,
+			InitialDelaySeconds: 60,
+			PeriodSeconds:       10,
+			SuccessThreshold:    1,
+			TimeoutSeconds:      5,
+		},
+		Lifecycle: &corev1.Lifecycle{
+			PreStop: &corev1.Handler{
+				Exec: &corev1.ExecAction{
+					Command: []string{
+						"bash",
+						"-c",
+						"pmm-admin inventory remove node --force $(pmm-admin status --json | python -c \"import sys, json; print(json.load(sys.stdin)['pmm_agent_status']['node_id'])\")",
+					},
+				},
+			},
+		},
+		Ports: []corev1.ContainerPort{
+			{
+				ContainerPort: 7777,
+				Protocol:      corev1.ProtocolTCP,
+			},
+			{
+				ContainerPort: 30100,
+			},
+			{
+				ContainerPort: 30101,
+			},
+			{
+				ContainerPort: 30102,
+			},
+			{
+				ContainerPort: 30103,
+			},
+			{
+				ContainerPort: 30104,
+			},
+			{
+				ContainerPort: 30105,
+			},
+		},
+		Env: []corev1.EnvVar{
+			{
+				Name:  "PMM_USER",
+				Value: cluster.Spec.Monitoring.PMM.ServerUser,
+			},
+			{
+				Name:  "PMM_AGENT_SERVER_USERNAME",
+				Value: cluster.Spec.Monitoring.PMM.ServerUser,
+			},
+			{
+				Name:  "PMM_SERVER",
+				Value: cluster.Spec.Monitoring.PMM.ServerHost,
+			},
+			{
+				Name:  "PMM_AGENT_SERVER_ADDRESS",
+				Value: cluster.Spec.Monitoring.PMM.ServerHost,
+			},
+			{
+				Name: "PMM_AGENT_SERVER_PASSWORD",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: cluster.Spec.Monitoring.PMM.SecretName,
+						},
+						Key: "password",
+					},
+				},
+			},
+			{
+				Name: "DB_PASS",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: cluster.Name + "-pguser-" + cluster.Name,
+						},
+						Key: "password",
+					},
+				},
+			},
+			{
+				Name:  "CLIENT_PORT_LISTEN",
+				Value: "7777",
+			},
+			{
+				Name:  "CLIENT_PORT_MIN",
+				Value: "30100",
+			},
+			{
+				Name:  "CLIENT_PORT_MAX",
+				Value: "30105",
+			},
+			{
+				Name: "POD_NAME",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						APIVersion: "v1",
+						FieldPath:  "metadata.name",
+					},
+				},
+			},
+			{
+				Name: "POD_NAMESPACE",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						APIVersion: "v1",
+						FieldPath:  "metadata.namespace",
+					},
+				},
+			},
+			{
+				Name:  "PMM_AGENT_LISTEN_PORT",
+				Value: "7777",
+			},
+			{
+				Name:  "PMM_AGENT_PORTS_MIN",
+				Value: "30100",
+			},
+			{
+				Name:  "PMM_AGENT_PORTS_MAX",
+				Value: "30105",
+			},
+			{
+				Name:  "PMM_AGENT_CONFIG_FILE",
+				Value: "/usr/local/percona/pmm2/config/pmm-agent.yaml",
+			},
+			{
+				Name:  "PMM_AGENT_SERVER_INSECURE_TLS",
+				Value: "1",
+			},
+			{
+				Name:  "PMM_AGENT_LISTEN_ADDRESS",
+				Value: "0.0.0.0",
+			},
+			{
+				Name:  "PMM_AGENT_SETUP_NODE_NAME",
+				Value: "$(POD_NAMESPACE)-$(POD_NAME)",
+			},
+			{
+				Name:  "PMM_AGENT_SETUP_METRICS_MODE",
+				Value: "push",
+			},
+			{
+				Name:  "PMM_AGENT_SETUP",
+				Value: "1",
+			},
+			{
+				Name:  "PMM_AGENT_SETUP_FORCE",
+				Value: "1",
+			},
+			{
+				Name:  "PMM_AGENT_SETUP_NODE_TYPE",
+				Value: "container",
+			},
+			{
+				Name:  "DB_TYPE",
+				Value: "postgresql",
+			},
+			{
+				Name:  "PMM_AGENT_SIDECAR",
+				Value: "true",
+			},
+			{
+				Name:  "PMM_AGENT_SIDECAR_SLEEP",
+				Value: "5",
+			},
+			{
+				Name:  "PMM_AGENT_PRERUN_SCRIPT",
+				Value: "pmm-admin status --wait=10s; pmm-admin add postgresql --tls-skip-verify --skip-connection-check --metrics-mode=push --username=postgres --password=$(DB_PASS) --service-name=$(PMM_AGENT_SETUP_NODE_NAME) --host=$(POD_NAME) --port=5432 --query-source=pgstatmonitor; pmm-admin annotate --service-name=$(PMM_AGENT_SETUP_NODE_NAME) 'Service restarted'",
+			},
+		},
+		SecurityContext: securityContext,
+	}
+
+	template.Spec.Containers = append(template.Spec.Containers, pmmContainer)
 
 	return nil
 }

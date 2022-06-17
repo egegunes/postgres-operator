@@ -66,6 +66,8 @@ const (
 
 	// ContainerPGMonitorExporter is the name of a container running postgres_exporter
 	ContainerPGMonitorExporter = "exporter"
+	// ContainerPMM is the name of a container running PMM
+	ContainerPMM = "pmm"
 
 	// ContainerJobMovePGDataDir is the name of the job container utilized to copy v4 Operator
 	// pgData directories to the v5 default location

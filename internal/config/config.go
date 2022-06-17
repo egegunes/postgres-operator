@@ -80,6 +80,17 @@ func PGExporterContainerImage(cluster *v1beta1.PostgresCluster) string {
 	return defaultFromEnv(image, "RELATED_IMAGE_PGEXPORTER")
 }
 
+// PMMContainerImage returns the container image to use for the PMM sidecars.
+func PMMContainerImage(cluster *v1beta1.PostgresCluster) string {
+	var image string
+
+	if cluster.Spec.Monitoring != nil && cluster.Spec.Monitoring.PMM != nil {
+		image = cluster.Spec.Monitoring.PMM.Image
+	}
+
+	return defaultFromEnv(image, "RELATED_IMAGE_PMM")
+}
+
 // PostgresContainerImage returns the container image to use for PostgreSQL.
 func PostgresContainerImage(cluster *v1beta1.PostgresCluster) string {
 	image := cluster.Spec.Image

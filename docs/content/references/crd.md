@@ -10846,6 +10846,11 @@ The specification of monitoring tools that connect to PostgreSQL
         <td>object</td>
         <td>PGMonitorSpec defines the desired state of the pgMonitor tool suite</td>
         <td>false</td>
+      </tr><tr>
+        <td><b><a href="#postgresclusterspecmonitoringpmm">pmm</a></b></td>
+        <td>object</td>
+        <td>PMMSpec defines the desired state of the PMM tool suite</td>
+        <td>false</td>
       </tr></tbody>
 </table>
 
@@ -11287,6 +11292,90 @@ information about the serviceAccountToken data to project
 
 
 Changing this value causes PostgreSQL and the exporter to restart. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers
+
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+    </thead>
+    <tbody><tr>
+        <td><b>limits</b></td>
+        <td>map[string]int or string</td>
+        <td>Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/</td>
+        <td>false</td>
+      </tr><tr>
+        <td><b>requests</b></td>
+        <td>map[string]int or string</td>
+        <td>Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/</td>
+        <td>false</td>
+      </tr></tbody>
+</table>
+
+
+<h3 id="postgresclusterspecmonitoringpmm">
+  PostgresCluster.spec.monitoring.pmm
+  <sup><sup><a href="#postgresclusterspecmonitoring">↩ Parent</a></sup></sup>
+</h3>
+
+
+
+PMMSpec defines the desired state of the PMM tool suite
+
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+    </thead>
+    <tbody><tr>
+        <td><b>image</b></td>
+        <td>string</td>
+        <td></td>
+        <td>true</td>
+      </tr><tr>
+        <td><b>imagePullPolicy</b></td>
+        <td>string</td>
+        <td></td>
+        <td>true</td>
+      </tr><tr>
+        <td><b>secretName</b></td>
+        <td>string</td>
+        <td></td>
+        <td>true</td>
+      </tr><tr>
+        <td><b>serverHost</b></td>
+        <td>string</td>
+        <td></td>
+        <td>true</td>
+      </tr><tr>
+        <td><b>serverUser</b></td>
+        <td>string</td>
+        <td></td>
+        <td>true</td>
+      </tr><tr>
+        <td><b><a href="#postgresclusterspecmonitoringpmmresources">resources</a></b></td>
+        <td>object</td>
+        <td>ResourceRequirements describes the compute resource requirements.</td>
+        <td>false</td>
+      </tr></tbody>
+</table>
+
+
+<h3 id="postgresclusterspecmonitoringpmmresources">
+  PostgresCluster.spec.monitoring.pmm.resources
+  <sup><sup><a href="#postgresclusterspecmonitoringpmm">↩ Parent</a></sup></sup>
+</h3>
+
+
+
+ResourceRequirements describes the compute resource requirements.
 
 <table>
     <thead>

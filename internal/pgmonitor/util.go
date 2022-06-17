@@ -32,3 +32,14 @@ func ExporterEnabled(cluster *v1beta1.PostgresCluster) bool {
 	}
 	return true
 }
+
+// PMMEnabled returns true if the PMM is enabled
+func PMMEnabled(cluster *v1beta1.PostgresCluster) bool {
+	if cluster.Spec.Monitoring == nil {
+		return false
+	}
+	if cluster.Spec.Monitoring.PMM == nil {
+		return false
+	}
+	return true
+}

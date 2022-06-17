@@ -650,6 +650,8 @@ func (meta *Metadata) GetAnnotationsOrNil() map[string]string {
 type MonitoringSpec struct {
 	// +optional
 	PGMonitor *PGMonitorSpec `json:"pgmonitor,omitempty"`
+	// +optional
+	PMM *PMMSpec `json:"pmm,omitempty"`
 }
 
 // MonitoringStatus is the current state of PostgreSQL cluster monitoring tool
@@ -663,6 +665,16 @@ type MonitoringStatus struct {
 type PGMonitorSpec struct {
 	// +optional
 	Exporter *ExporterSpec `json:"exporter,omitempty"`
+}
+
+// PMMSpec defines the desired state of the PMM tool suite
+type PMMSpec struct {
+	Image           string                      `json:"image"`
+	ImagePullPolicy string                      `json:"imagePullPolicy"`
+	ServerHost      string                      `json:"serverHost"`
+	ServerUser      string                      `json:"serverUser"`
+	SecretName      string                      `json:"secretName"`
+	Resources       corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
 type ExporterSpec struct {
